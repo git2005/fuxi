@@ -19,6 +19,7 @@ public class MainTest {
     public static void main(String[] args) {
 
 //        测试
+//        这是第一次修改git
         SqlSessionFactoryBuilder sqlSessionFactoryBuilder=new SqlSessionFactoryBuilder();
         try {
             /*根据主配置文件获取SQLSessionFactory
