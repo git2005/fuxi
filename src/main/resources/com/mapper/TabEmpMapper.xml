@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--映射文件：书写sql语句
+以及类（实体）和数据库表的映射  属性和字段的映射  对象和记录
+    mybatis有一个自动映射：resultType直接书写类名，列名和属性名自动映射
+    也可以手动映射：resultMap标签对应ResultMap属性-->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--mapper为根标签
+namespace对应xml  或者接口名-->
+
+<mapper namespace="com.mapper.TabEmpMapper">
+    <!--resultType和resultMap二择其一，只有select标签有。insert update delete没有这个属性
+    代表：查询结果的映射，对应的如果只有一行，那么可以直接对应到方法的返回值数据类型上也可以对应到泛型上;
+如果查询结果是多行，对应的是结果集的泛型—————— 一行的数据类型。
+    resultType：自动映射，里边可以映射Map:列名做key  列值做值
+            也可以映射实体：列名和属性名一致如果开启驼峰命名法，_会按照驼峰命名进行处理
+            也可以映射单一的Spring Integer等
+resultMap：手动映射，可以处理复杂映射关系以及字段名和属性名不一致的情况的映射，映射的都是实体
+      -->
+    <select id="selectEmp1" resultType="com.entity.EmpEntity"> /*映射实体 返回的是多行*/
+        select * from tab_employee
+    </select>
+
+<!--    除了可以映射实体以外，还可以映射map-->
+    <select id="selectEmp2" resultType="java.util.Map">
+        select * from tab_employee
+    </select>
+
+<!--    只有一列数据：单一直但是有多行-->
+    <select id="selectEmp3" resultType="String">
+        select employee_name from tab_employee
+    </select>
+
+<!-- 只有一行   入参 一般parameterType（手动的）不用。  parameterType自动的
+接收一个：#{随便写}  #和 $的区别-->
+    <select id="selectEmp4" resultType="String" parameterType="Integer">
+        select employee_name from tab_employee where employee_id=#{id}
+    </select>
+
+    <select id="selectEmp5" resultType="String" parameterType="Integer">
+        select employee_name from tab_employee where employee_id=#{id}
+    </select>
+
+
+
+<!--    type:全类名或者别名   autoMapping:是否启动  如果启动所有的属性会自动进行映射，
+一般的可以使用下边的显示映射-->
+    <resultMap id="empMap" type="com.entity.EmpEntity">
+        <!--id对应的是唯一列  column查询结果的列名  property：实体属性名
+        JavaType：实体属性的数据类型  jdbcType:数据库列队形JDBC的数据类型
+        typeHandle：类型转换器  一般情况下这三个都不写会默认自动转换-->
+        <id column="employee_id" property="employeeId"></id>
+        <!--普通列-->
+<!--        <result column="employee_name" property="employeeName"></result>-->
+        <association property="depart" javaType="com.entity.DepartEntity" autoMapping="true">
+            <id column="depart_id" property="departId"></id>
+        </association>
+    </resultMap>
+
+    <select id="selectEmp6" resultMap="empMap">
+        select employee_name from tab_employee
+    </select>
+
+    <select id="selectEmp7" resultMap="empMap">
+        select * from tab_employee a
+        join tab_department b on a.depart_id=b.depart_id
+    </select>
+
+
+
+<!--一对多-->
+    <resultMap id="deptMap" type="com.entity.DepartEntity" autoMapping="true">
+        <!--id对应的是唯一列  column查询结果的列名  property：实体属性名
+        JavaType：实体属性的数据类型  jdbcType:数据库列队形JDBC的数据类型
+        typeHandle：类型转换器  一般情况下这三个都不写会默认自动转换-->
+        <id column="depart_id" property="departId"></id>
+        <!--对应的属性是list类型的，但是映射的关系是list的每一行-->
+        <collection property="emps" ofType="com.entity.EmpEntity" autoMapping="true" resultMap="empMap">
+            <id column="employee_id" property="employeeId"></id>
+        </collection>
+    </resultMap>
+    <select id="selectEmp8" resultMap="deptMap">
+        select * from tab_employee a
+        join tab_department b on a.depart_id=b.depart_id
+    </select>
+
+
+
+    <resultMap id="deptMap2" type="com.entity.DepartEntity" autoMapping="true">
+        <!--id对应的是唯一列  column查询结果的列名  property：实体属性名
+        JavaType：实体属性的数据类型  jdbcType:数据库列队形JDBC的数据类型
+        typeHandle：类型转换器  一般情况下这三个都不写会默认自动转换-->
+        <id column="depart_id" property="departId"></id>
+        <!--对应的属性是list类型的，但是映射的关系是list的每一行-->
+        <collection property="emps" ofType="com.entity.EmpEntity"
+                    autoMapping="true" select="selectEmpById" column="depart_id" fetchType="eager">
+            <id column="employee_id" property="employeeId"></id>
+        </collection>
+    </resultMap>
+    <select id="selectDept1" resultMap="deptMap2">
+        select * from tab_department b
+    </select>
+    <select id="selectEmpById" resultType="com.entity.EmpEntity">
+        select * from tab_employee b where depart_id=#{id2}
+    </select>
+
+<!--#对于传入的参数一般都是处理为字符串，一般预编译的时候带有''  eg: name= 'csdn'
+    $不会对值进行预编译，相当于直接取值放到sql中 name=csdn
+    #其实走的是预编译，以？站位，可以解决sql注入：而$走的是字符串拼接，没办法解决sql注入
+    如果传入的表名或者列名———— 不是值:肯定不能加'' 所以此时用$.   eg:order by 列名 可以用$-->
+    <insert id="insertDept" statementType="PREPARED">
+        insert into tab_department (depart_name,depart_state)values (#{departName},#{departState})
+    </insert>
+
+
+    <!--动态sql-->
+    <!--where 1=1
+        and employee_name like '%${empName}%' 这种一般不用
+
+ <trim></trim>前后补全和前后覆盖  concat('%',#{empName},'%')一般用这种模糊匹配
+       可以写多个if判断
+ <where></where>是固定的前补全
+-->
+    <select id="selectDeptEmp" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        select * from tab_employee a
+        join tab_department b on a.depart_id=b.depart_id
+        <where>
+            <if test="empName!=null">
+                and employee_name like concat('%',#{empName},'%')
+            </if>
+             <if test="empPhone!=null">
+                and employee_phone like concat('%',#{empPhone},'%')
+             </if>
+        </where>
+    </select>
+
+    <!--选择修改：就是根据出入的值进行判断,如果非空的列进行修改，为空的列不修改-->
+    <update id="updateEmpSelect" parameterType="java.util.HashMap">
+        tab_employee
+        <set>
+            <if test="empName!=null">
+                employee_name=#{empName},
+            </if>
+            <if test="empPhone!=null">
+                employee_phone=#{empPhone},
+            </if>
+        </set>
+        where employee_id=#{empId}
+    </update>
+
+    <insert id="insertDeptMore">
+        insert into tab_department (depart_name,depart_state,belong_id)values
+        <foreach collection="list" separator="," item="depart">
+            (#{depart.departName},#{depart.departState},#{depart.belongId})
+        </foreach>
+    </insert>
+
+    <!--调用存储过程-->
+    <select id="selectCall" statementType="CALLABLE" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        call selectEmp(#{departId,mode=IN,jdbcType=INTEGER})
+    </select>
+
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
